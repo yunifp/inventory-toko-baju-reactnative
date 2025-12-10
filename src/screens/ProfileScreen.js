@@ -1,77 +1,93 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function ProfileScreen({ navigation }) {
+const MenuItem = ({ icon, label, onPress, color = "#4B5563", danger = false }) => (
+  <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <View style={[styles.iconBox, { backgroundColor: danger ? '#FEF2F2' : '#F3F4F6' }]}>
+      <Ionicons name={icon} size={20} color={danger ? '#EF4444' : color} />
+    </View>
+    <Text style={[styles.menuText, { color: danger ? '#EF4444' : '#1F2937' }]}>{label}</Text>
+    <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+  </TouchableOpacity>
+);
+
+export default function ProfileScreen() {
   const { user, role, logout } = useAuth();
 
+  const handleLogout = () => {
+    Alert.alert("Logout", "Anda yakin ingin keluar?", [
+      { text: "Batal" },
+      { text: "Ya, Keluar", onPress: logout, style: 'destructive' }
+    ]);
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{flexGrow: 1}}>
-      <LinearGradient colors={['#2c3e50', '#4ca1af']} style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Ionicons name="person" size={60} color="#4ca1af" />
+    <View style={styles.container}>
+      <LinearGradient colors={['#1E293B', '#334155']} style={styles.header}>
+        <View style={styles.profileInfo}>
+          <View style={styles.avatarBorder}>
+            <Image 
+              source={{ uri: `https://ui-avatars.com/api/?name=${user?.email}&background=0D9488&color=fff&size=128` }} 
+              style={styles.avatar} 
+            />
+          </View>
+          <View>
+            <Text style={styles.name}>{user?.email?.split('@')[0]}</Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>{role === 'admin' ? 'Administrator' : 'Staff'}</Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.name}>{user?.email?.split('@')[0]}</Text>
-        <Text style={styles.role}>{role?.toUpperCase()}</Text>
       </LinearGradient>
 
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Ionicons name="mail-outline" size={24} color="#555" />
-            <View style={styles.rowText}>
-              <Text style={styles.label}>Email Address</Text>
-              <Text style={styles.value}>{user?.email}</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.row}>
-            <Ionicons name="shield-checkmark-outline" size={24} color="#555" />
-            <View style={styles.rowText}>
-              <Text style={styles.label}>Access Level</Text>
-              <Text style={styles.value}>{role === 'admin' ? 'Administrator' : 'Staff Gudang'}</Text>
-            </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Akun Saya</Text>
+          <View style={styles.card}>
+            <MenuItem icon="mail-outline" label={user?.email} />
+            <MenuItem icon="shield-checkmark-outline" label={`Role: ${role}`} />
           </View>
         </View>
 
-        {/* {role === 'admin' && (
-          <TouchableOpacity 
-            style={styles.addStaffBtn} 
-            onPress={() => navigation.navigate('AddStaff')}
-          >
-            <Ionicons name="person-add-outline" size={20} color="white" style={{marginRight: 10}} />
-            <Text style={styles.addStaffText}>TAMBAH AKUN STAFF</Text>
-          </TouchableOpacity>
-        )} */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferensi</Text>
+          <View style={styles.card}>
+            <MenuItem icon="notifications-outline" label="Notifikasi" onPress={() => {}} />
+            <MenuItem icon="lock-closed-outline" label="Ganti Password" onPress={() => {}} />
+            <MenuItem icon="language-outline" label="Bahasa" onPress={() => {}} />
+          </View>
+        </View>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>LOG OUT</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.version}>App Version 1.0.0</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.section}>
+          <View style={styles.card}>
+            <MenuItem icon="log-out-outline" label="Log Out" danger onPress={handleLogout} />
+          </View>
+        </View>
+
+        <Text style={styles.version}>Versi Aplikasi 2.0.0 (Revamped)</Text>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
-  header: { alignItems: 'center', paddingVertical: 50, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  avatarContainer: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 5 },
-  name: { fontSize: 22, fontWeight: 'bold', color: 'white' },
-  role: { fontSize: 14, color: '#e0e0e0', marginTop: 5, letterSpacing: 1 },
-  content: { padding: 20, marginTop: -30 },
-  card: { backgroundColor: 'white', borderRadius: 20, padding: 25, elevation: 4 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  rowText: { marginLeft: 15 },
-  label: { fontSize: 12, color: '#999' },
-  value: { fontSize: 16, color: '#333', fontWeight: '500' },
-  divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 15 },
-  addStaffBtn: { backgroundColor: '#11998e', padding: 15, borderRadius: 15, alignItems: 'center', marginTop: 20, flexDirection: 'row', justifyContent: 'center', elevation: 3 },
-  addStaffText: { color: 'white', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 },
-  logoutBtn: { backgroundColor: '#ff4757', padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 15, shadowColor: '#ff4757', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, elevation: 5 },
-  logoutText: { color: 'white', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
-  version: { textAlign: 'center', marginTop: 30, color: '#ccc', fontSize: 12 }
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  header: { paddingHorizontal: 25, paddingTop: 60, paddingBottom: 40, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  profileInfo: { flexDirection: 'row', alignItems: 'center'},
+  avatarBorder: { padding: 3, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 40, marginRight: 20 },
+  avatar: { width: 70, height: 70, borderRadius: 35 },
+  name: { fontSize: 24, fontWeight: 'bold', color: 'white' },
+  roleBadge: { backgroundColor: '#0D9488', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 5 },
+  roleText: { color: 'white', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
+  content: { padding: 20, marginTop: 20 },
+  section: { marginBottom: 25 },
+  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#64748B', marginBottom: 10, marginLeft: 5, textTransform: 'uppercase', letterSpacing: 1 },
+  card: { backgroundColor: 'white', borderRadius: 16, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  menuText: { flex: 1, fontSize: 15, fontWeight: '500' },
+  version: { textAlign: 'center', color: '#94A3B8', fontSize: 12, marginBottom: 20 }
 });

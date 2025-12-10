@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert, ActivityIndicator, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert, ActivityIndicator, Text, KeyboardAvoidingView, Platform, Dimensions, StatusBar } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '../config/firebase';
+
+const { height } = Dimensions.get('window');
 
 export default function AddItemScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -60,73 +62,156 @@ export default function AddItemScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.mainContainer}
-    >
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        <LinearGradient colors={['#4c669f', '#3b5998']} style={styles.header}>
-          <Text style={styles.headerTitle}>Tambah Barang Baru</Text>
-        </LinearGradient>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
+      <LinearGradient 
+        colors={['#4F46E5', '#818CF8']} 
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={28} color="white" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Tambah Barang</Text>
+            <Text style={styles.headerSubtitle}>Input data produk baru</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-        <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.card}>
-            <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Ionicons name="camera" size={40} color="#3b5998" />
-                  <Text style={styles.imageText}>Upload Foto Produk</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Informasi Produk</Text>
             
-            <View style={styles.inputGroup}>
-              <Ionicons name="cube-outline" size={20} color="#888" style={styles.icon} />
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>FOTO PRODUK</Text>
+              <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
+                {imageUri ? (
+                  <>
+                    <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                    <View style={styles.editIconBadge}>
+                      <Ionicons name="pencil" size={16} color="white" />
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons name="cloud-upload-outline" size={40} color="#6366F1" />
+                    <Text style={styles.uploadText}>Upload Foto</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>NAMA BARANG</Text>
               <TextInput 
                 style={styles.input} 
-                placeholder="Nama Produk (Misal: Kopi)" 
+                placeholder="Contoh: Kemeja Flanel" 
+                placeholderTextColor="#94A3B8"
                 value={name} onChangeText={setName} 
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Ionicons name="barcode-outline" size={20} color="#888" style={styles.icon} />
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>KODE SKU (UNIK)</Text>
               <TextInput 
                 style={styles.input} 
-                placeholder="Kode SKU (Misal: KOPI-001)" 
-                value={sku} onChangeText={setSku} 
+                placeholder="Contoh: FL-001" 
+                placeholderTextColor="#94A3B8"
+                value={sku} onChangeText={setSku}
+                autoCapitalize="characters"
               />
             </View>
 
             <TouchableOpacity style={styles.btn} onPress={handleSave} disabled={loading}>
-              {loading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>SIMPAN DATA</Text>}
+              <LinearGradient
+                colors={['#4F46E5', '#4338CA']}
+                style={styles.btnGradient}
+              >
+                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>SIMPAN DATA</Text>}
+              </LinearGradient>
             </TouchableOpacity>
+
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#f5f7fa' },
-  scrollViewContent: { flexGrow: 1 },
-  header: { padding: 20, paddingTop: 50, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, height: 150 },
-  headerTitle: { color: 'white', fontSize: 22, fontWeight: 'bold', textAlign: 'center' },
-  container: { padding: 20, marginTop: -60 },
-  card: { backgroundColor: 'white', borderRadius: 20, padding: 25, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 },
-  imagePicker: { alignSelf: 'center', marginBottom: 25 },
-  imagePreview: { width: 150, height: 150, borderRadius: 15 },
-  imagePlaceholder: { width: 150, height: 150, borderRadius: 15, backgroundColor: '#f0f4f8', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#3b5998' },
-  imageText: { color: '#3b5998', marginTop: 10, fontSize: 12, fontWeight: '600' },
-  label: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 15 },
-  inputGroup: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 10, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#eee', height: 50 },
-  icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16, color: '#333' },
-  btn: { backgroundColor: '#3b5998', borderRadius: 10, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#3b5998', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
-  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  header: {
+    height: height * 0.15,
+    borderBottomLeftRadius: 35,
+    borderBottomRightRadius: 35,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingHorizontal: 25,
+    justifyContent: 'center',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backBtn: {
+    marginRight: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 8,
+    borderRadius: 12,
+  },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: 'white', letterSpacing: 0.5 },
+  headerSubtitle: { fontSize: 14, color: '#E0E7FF', marginTop: 2 },
+  
+  keyboardView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 30 },
+  
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 25,
+    marginTop: 50,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  
+  section: { alignItems: 'center', marginBottom: 25 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 15, letterSpacing: 1 },
+  imagePicker: { position: 'relative' },
+  imagePreview: { width: 120, height: 120, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  imagePlaceholder: { 
+    width: 120, height: 120, borderRadius: 20, backgroundColor: '#F8FAFC', 
+    borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed',
+    justifyContent: 'center', alignItems: 'center' 
+  },
+  uploadText: { marginTop: 8, fontSize: 12, color: '#6366F1', fontWeight: '600' },
+  editIconBadge: {
+    position: 'absolute', bottom: -5, right: -5,
+    backgroundColor: '#4F46E5', padding: 8, borderRadius: 20,
+    borderWidth: 3, borderColor: 'white'
+  },
+
+  formGroup: { marginBottom: 20 },
+  label: { fontSize: 11, fontWeight: '800', color: '#334155', marginBottom: 8, marginLeft: 4 },
+  input: {
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
+    borderRadius: 14, paddingHorizontal: 16, height: 50,
+    fontSize: 16, color: '#1E293B'
+  },
+
+  btn: { marginTop: 10, shadowColor: '#4F46E5', shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  btnGradient: { borderRadius: 14, height: 55, justifyContent: 'center', alignItems: 'center' },
+  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 }
 });

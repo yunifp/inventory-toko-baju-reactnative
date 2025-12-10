@@ -1,10 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Image, StatusBar } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Alert, Image, StatusBar, Animated } from 'react-native';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
+
+const SummaryCard = ({ title, value, color, icon }) => (
+  <LinearGradient colors={color} style={styles.summaryCard}>
+    <View style={styles.summaryIconBox}>
+      <Ionicons name={icon} size={22} color="white" />
+    </View>
+    <View>
+      <Text style={styles.summaryValue}>{value}</Text>
+      <Text style={styles.summaryTitle}>{title}</Text>
+    </View>
+  </LinearGradient>
+);
 
 export default function DashboardScreen({ navigation }) {
   const [products, setProducts] = useState([]);
@@ -12,6 +24,8 @@ export default function DashboardScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [stockInputs, setStockInputs] = useState({});
   const { role, user } = useAuth();
+  
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!user) return;
@@ -20,9 +34,7 @@ export default function DashboardScreen({ navigation }) {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setProducts(list);
       setFilteredData(list);
-    }, (error) => {
-      if (error.code !== 'permission-denied') console.error(error);
-    });
+    }, (error) => { console.error(error); });
     return unsubscribe;
   }, [user]);
 
@@ -35,165 +47,165 @@ export default function DashboardScreen({ navigation }) {
     setFilteredData(filtered);
   };
 
-  const handleInputChange = (id, text) => {
-    setStockInputs(prev => ({ ...prev, [id]: text }));
-  };
-
   const handleStaffUpdateStock = async (item) => {
-    const newStockStr = stockInputs[item.id];
-    if (!newStockStr) return;
-    
-    const newStock = parseInt(newStockStr);
-    if (isNaN(newStock)) return Alert.alert("Error", "Masukkan angka valid");
-
+    const newStock = parseInt(stockInputs[item.id]);
+    if (isNaN(newStock)) return Alert.alert("Error", "Angka tidak valid");
     try {
       await updateDoc(doc(db, "products", item.id), { stock: newStock });
-      
-      const updatedProducts = products.map(p => 
-        p.id === item.id ? { ...p, stock: newStock } : p
-      );
-      const totalWarehouseStock = updatedProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
-
       await addDoc(collection(db, "stock_history"), {
-        type: 'total_snapshot',
-        totalStock: totalWarehouseStock,
-        updatedBy: item.name,
-        date: Timestamp.now()
+        type: 'update', totalStock: 0, updatedBy: item.name, date: Timestamp.now()
       });
-
-      Alert.alert("Sukses", `Stok ${item.name} diperbarui`);
+      Alert.alert("Sukses", `Stok ${item.name} terupdate`);
       setStockInputs(prev => ({ ...prev, [item.id]: '' }));
-    } catch (e) {
-      Alert.alert("Error", e.message);
-    }
+    } catch (e) { Alert.alert("Error", e.message); }
   };
 
   const handleDelete = (id) => {
-    Alert.alert("Hapus Barang", "Yakin ingin menghapus?", [
-      { text: "Batal", style: 'cancel' },
+    Alert.alert("Hapus", "Yakin hapus barang ini?", [
+      { text: "Batal" },
       { text: "Hapus", style: 'destructive', onPress: () => deleteDoc(doc(db, "products", id)) }
     ]);
   };
 
-  const renderItem = useCallback(({ item }) => {
-    const imageSource = item.imageUrl 
-      ? { uri: item.imageUrl } 
-      : require('../../assets/placeholder.png');
+  const renderItem = ({ item, index }) => {
+    const isLow = item.stock < 10;
     
-    const isLowStock = item.stock < 10;
-
     return (
-      <View style={styles.card}>
-        <View style={styles.cardContent}>
-          <Image source={imageSource} style={styles.productImage} />
-          
-          <View style={styles.infoContainer}>
-            <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.sku}>SKU: {item.sku}</Text>
-            <View style={[styles.badge, isLowStock ? styles.badgeLow : styles.badgeNormal]}>
-              <Text style={styles.badgeText}>{isLowStock ? "Stok Menipis" : "Stok Aman"}</Text>
-            </View>
-          </View>
-
-          <View style={styles.stockContainer}>
-            <Text style={styles.stockLabel}>Sisa</Text>
-            <Text style={[styles.stockValue, { color: isLowStock ? '#e74c3c' : '#2ecc71' }]}>
-              {item.stock}
+      <Animated.View style={[styles.card, {
+        transform: [{ translateY: scrollY.interpolate({ inputRange: [-1, 0, (index + 2) * 50, (index + 2) * 100], outputRange: [0, 0, 0, 50] }) }]
+      }]}>
+        <View style={styles.cardLeft}>
+          <Image source={item.imageUrl ? { uri: item.imageUrl } : require('../../assets/placeholder.png')} style={styles.image} />
+        </View>
+        <View style={styles.cardCenter}>
+          <Text style={styles.prodName}>{item.name}</Text>
+          <Text style={styles.prodSku}>{item.sku}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: isLow ? '#FECACA' : '#BBF7D0' }]}>
+            <Text style={[styles.statusText, { color: isLow ? '#DC2626' : '#16A34A' }]}>
+              {isLow ? 'Stok Rendah' : 'Stok Tersedia'}
             </Text>
           </View>
         </View>
+        <View style={styles.cardRight}>
+          <Text style={styles.stockLabel}>Sisa</Text>
+          <Text style={[styles.stockNum, { color: isLow ? '#DC2626' : '#1E293B' }]}>{item.stock}</Text>
+        </View>
 
         {role === 'staff' ? (
-          <View style={styles.staffAction}>
+          <View style={styles.actionRow}>
             <TextInput 
               style={styles.inputStock} 
-              placeholder="Input Stok" 
+              placeholder="0" 
               keyboardType="numeric"
               value={stockInputs[item.id] || ''}
-              onChangeText={(text) => handleInputChange(item.id, text)}
+              onChangeText={(t) => setStockInputs(prev => ({...prev, [item.id]: t}))}
             />
-            <TouchableOpacity style={styles.updateBtn} onPress={() => handleStaffUpdateStock(item)}>
-              <Ionicons name="save-outline" size={18} color="white" />
+            <TouchableOpacity style={styles.saveBtn} onPress={() => handleStaffUpdateStock(item)}>
+              <Ionicons name="checkmark" size={20} color="white" />
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.adminAction}>
-            <TouchableOpacity onPress={() => navigation.navigate('EditItem', { item })} style={styles.actionBtn}>
-              <Ionicons name="create-outline" size={20} color="#f39c12" />
-              <Text style={[styles.actionText, {color: '#f39c12'}]}>Edit</Text>
+          <View style={styles.adminRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('EditItem', { item })} style={styles.iconBtn}>
+              <Ionicons name="pencil" size={18} color="#F59E0B" />
             </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.actionBtn}>
-              <Ionicons name="trash-outline" size={20} color="#e74c3c" />
-              <Text style={[styles.actionText, {color: '#e74c3c'}]}>Hapus</Text>
+            <TouchableOpacity onPress={() => handleDelete(item.id)} style={[styles.iconBtn, {backgroundColor: '#FEF2F2'}]}>
+              <Ionicons name="trash" size={18} color="#EF4444" />
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </Animated.View>
     );
-  }, [role, stockInputs]);
+  };
+
+  const totalStock = products.reduce((acc, curr) => acc + (curr.stock || 0), 0);
+  const lowStockCount = products.filter(i => i.stock < 10).length;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#4c669f', '#3b5998', '#192f6a']} style={styles.header}>
-        <Text style={styles.headerTitle}>Inventory Gudang</Text>
-        <Text style={styles.headerSubtitle}>Total Item: {products.length}</Text>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+      <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.header}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>Halo, {role === 'admin' ? 'Admin' : 'Staff'}</Text>
+            <Text style={styles.headerTitle}>Gudang Utama</Text>
+          </View>
+          
+          <View style={styles.headerButtons}>
+            {role === 'admin' && (
+              <TouchableOpacity style={styles.statsBtn} onPress={() => navigation.navigate('Stats')}>
+                <Ionicons name="stats-chart" size={20} color="#4F46E5" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profil')}>
+              <Image source={{uri: 'https://ui-avatars.com/api/?name=Admin&background=random'}} style={styles.avatar} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={20} color="#94A3B8" />
           <TextInput 
-            style={styles.searchInput}
-            placeholder="Cari nama atau SKU..."
-            placeholderTextColor="#bbb"
+            style={styles.searchInput} 
+            placeholder="Cari SKU atau nama barang..." 
+            placeholderTextColor="#94A3B8"
             value={search}
             onChangeText={handleSearch}
           />
         </View>
-        {role === 'admin' && (
-          <TouchableOpacity style={styles.statsIcon} onPress={() => navigation.navigate('Stats')}>
-            <Ionicons name="stats-chart" size={24} color="white" />
-          </TouchableOpacity>
-        )}
+
+        <View style={styles.summaryContainer}>
+          <SummaryCard title="Total Item" value={products.length} color={['#F59E0B', '#D97706']} icon="cube" />
+          <SummaryCard title="Total Stok" value={totalStock} color={['#10B981', '#059669']} icon="layers" />
+          <SummaryCard title="Perlu Restock" value={lowStockCount} color={['#EF4444', '#DC2626']} icon="alert-circle" />
+        </View>
       </LinearGradient>
-      <FlatList
+
+      <Animated.FlatList
         data={filteredData}
-        renderItem={renderItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<Text style={{textAlign:'center', marginTop:50, color:'#94A3B8'}}>Data tidak ditemukan</Text>}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
-  header: { padding: 20, paddingTop: 50, borderBottomLeftRadius: 25, borderBottomRightRadius: 25, elevation: 5 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 },
-  headerSubtitle: { color: '#e0e0e0', fontSize: 14, marginBottom: 15 },
-  searchContainer: { flexDirection: 'row', backgroundColor: 'white', borderRadius: 12, alignItems: 'center', paddingHorizontal: 15, height: 45 },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 16, color: '#333' },
-  statsIcon: { position: 'absolute', top: 55, right: 20 },
-  listContent: { padding: 20, paddingBottom: 100 },
-  card: { backgroundColor: 'white', borderRadius: 16, marginBottom: 15, padding: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
-  cardContent: { flexDirection: 'row', marginBottom: 15 },
-  productImage: { width: 70, height: 70, borderRadius: 12, backgroundColor: '#eee' },
-  infoContainer: { flex: 1, marginLeft: 15, justifyContent: 'center' },
-  name: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 4 },
-  sku: { fontSize: 12, color: '#888', marginBottom: 6 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-  badgeLow: { backgroundColor: '#fadbd8' },
-  badgeNormal: { backgroundColor: '#d5f5e3' },
-  badgeText: { fontSize: 10, fontWeight: 'bold', color: '#555' },
-  stockContainer: { alignItems: 'center', justifyContent: 'center', paddingLeft: 10 },
-  stockLabel: { fontSize: 10, color: '#888' },
-  stockValue: { fontSize: 20, fontWeight: 'bold' },
-  staffAction: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 12 },
-  inputStock: { flex: 1, backgroundColor: '#f9f9f9', borderRadius: 8, paddingHorizontal: 15, height: 40, borderWidth: 1, borderColor: '#eee', marginRight: 10 },
-  updateBtn: { backgroundColor: '#3b5998', width: 40, height: 40, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  adminAction: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10, justifyContent: 'space-around' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 5 },
-  actionText: { marginLeft: 5, fontWeight: '600', fontSize: 14 },
-  divider: { width: 1, backgroundColor: '#eee', height: '100%' }
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { paddingTop: 60, paddingBottom: 25, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  greeting: { color: '#C7D2FE', fontSize: 14, fontWeight: '600' },
+  headerTitle: { color: 'white', fontSize: 24, fontWeight: 'bold' },
+  headerButtons: { flexDirection: 'row', alignItems: 'center' },
+  statsBtn: { width: 40, height: 40, backgroundColor: 'white', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  profileBtn: { padding: 2, backgroundColor: 'white', borderRadius: 25 },
+  avatar: { width: 40, height: 40, borderRadius: 20 },
+  searchBox: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, height: 50, borderRadius: 15, alignItems: 'center', marginBottom: 20 },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B' },
+  summaryContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+  summaryCard: { width: '31%', padding: 10, borderRadius: 15, alignItems: 'center' },
+  summaryIconBox: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 5, borderRadius: 8, marginBottom: 5 },
+  summaryValue: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  summaryTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 10, fontWeight: '600' },
+  list: { padding: 20, paddingTop: 10 },
+  card: { backgroundColor: 'white', borderRadius: 20, padding: 15, marginBottom: 15, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', elevation: 3, shadowColor: '#64748B', shadowOpacity: 0.1, shadowRadius: 10 },
+  cardLeft: { marginRight: 15 },
+  image: { width: 60, height: 60, borderRadius: 12, backgroundColor: '#F1F5F9' },
+  cardCenter: { flex: 1 },
+  prodName: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
+  prodSku: { fontSize: 12, color: '#64748B', marginBottom: 5 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' },
+  statusText: { fontSize: 10, fontWeight: '700' },
+  cardRight: { alignItems: 'flex-end', minWidth: 50 },
+  stockLabel: { fontSize: 10, color: '#94A3B8' },
+  stockNum: { fontSize: 20, fontWeight: '800' },
+  actionRow: { width: '100%', flexDirection: 'row', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  inputStock: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 15, height: 40, marginRight: 10 },
+  saveBtn: { width: 40, height: 40, backgroundColor: '#4F46E5', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  adminRow: { position: 'absolute', right: 15, bottom: 15, flexDirection: 'row', gap: 10 },
+  iconBtn: { width: 32, height: 32, backgroundColor: '#FEF3C7', borderRadius: 8, justifyContent: 'center', alignItems: 'center' }
 });
