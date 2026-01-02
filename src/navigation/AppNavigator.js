@@ -12,6 +12,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import StatsScreen from '../screens/StatsScreen';
 import EditItemScreen from '../screens/EditItemScreen';
 import AddStaffScreen from '../screens/AddStaffScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -34,6 +35,7 @@ const AdminTabs = () => (
       let iconName;
       if (route.name === 'Stok') iconName = 'cube';
       else if (route.name === 'Barang') iconName = 'add-circle';
+      else if (route.name === 'Riwayat') iconName = 'time';
       else if (route.name === 'Karyawan') iconName = 'people';
       else if (route.name === 'Profil') iconName = 'person';
       return <Ionicons name={iconName} size={size} color={color} />;
@@ -44,6 +46,7 @@ const AdminTabs = () => (
   })}>
     <Tab.Screen name="Stok" component={AdminDashboardStack} />
     <Tab.Screen name="Barang" component={AddItemScreen} />
+    <Tab.Screen name="Riwayat" component={HistoryScreen} />
     <Tab.Screen name="Karyawan" component={AddStaffScreen} /> 
     <Tab.Screen name="Profil" component={ProfileScreen} />
   </Tab.Navigator>
@@ -55,6 +58,7 @@ const StaffTabs = () => (
     tabBarIcon: ({ color, size }) => {
       let iconName;
       if (route.name === 'Stok') iconName = 'list';
+      else if (route.name === 'Riwayat') iconName = 'time';
       else if (route.name === 'Profil') iconName = 'person';
       return <Ionicons name={iconName} size={size} color={color} />;
     },
@@ -63,6 +67,7 @@ const StaffTabs = () => (
     tabBarStyle: { paddingBottom: 5, height: 60 }
   })}>
     <Tab.Screen name="Stok" component={DashboardScreen} />
+    <Tab.Screen name="Riwayat" component={HistoryScreen} />
     <Tab.Screen name="Profil" component={ProfileScreen} />
   </Tab.Navigator>
 );

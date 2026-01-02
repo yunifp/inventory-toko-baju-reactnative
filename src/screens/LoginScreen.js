@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
   loginText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 1,
   },

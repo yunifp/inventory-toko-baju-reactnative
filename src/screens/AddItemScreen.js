@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 
 const { height } = Dimensions.get('window');
 
@@ -49,9 +49,21 @@ export default function AddItemScreen({ navigation }) {
       let publicImageUrl = null;
       if (imageUri) publicImageUrl = await uploadToCloudinary(imageUri);
 
-      await addDoc(collection(db, "products"), {
+      const docRef = await addDoc(collection(db, "products"), {
         name, sku, stock: 0, imageUrl: publicImageUrl, createdAt: new Date()
       });
+
+      await addDoc(collection(db, "stock_history"), {
+        productId: docRef.id,
+        productName: name,
+        sku: sku,
+        amount: 0,
+        type: 'in',
+        userEmail: auth.currentUser?.email,
+        createdAt: new Date(),
+        note: 'Barang baru ditambahkan'
+      });
+
       Alert.alert("Sukses", "Barang ditambahkan");
       navigation.goBack();
     } catch (e) {
